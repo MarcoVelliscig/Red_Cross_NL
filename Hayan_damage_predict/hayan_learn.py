@@ -167,14 +167,14 @@ def model_pred(X,Y, maximize='accuracy' , model_type='logreg' ,limits = [-3 , 1 
     if model_type=='linreg' :
         model = linear_model.Ridge(alpha =  best_lambda )
         model.fit(X_train, Y_train)
-        print  zip(X_train.columns , model.coef_)
+        #print  zip(X_train.columns , model.coef_)
     elif model_type=='lasso' :    
         model = linear_model.Lasso(alpha =  best_lambda )
         model.fit(X_train, Y_train)        
     elif model_type=='randomforest' :
         model = RandomForestRegressor(n_estimators =int(best_lambda), n_jobs=2)
         model.fit(X_train, Y_train)
-        print zip(X_train.columns , model.feature_importances_)
+        #print zip(X_train.columns , model.feature_importances_)
     elif model_type=='GBT' :
         model = GradientBoostingClassifier(n_estimators=int(best_lambda), learning_rate=1.0,max_depth=1, random_state=0)
 
@@ -192,11 +192,11 @@ def model_pred(X,Y, maximize='accuracy' , model_type='logreg' ,limits = [-3 , 1 
     print ' diff pred and ground ' , np.mean(abs(Y_test_pred -Y_test ))
     #Y_sub_pred= pd.Series(model.predict(X))
     Y_sub_pred=cross_validation.cross_val_predict(model, X, y=Y, cv=n_cv_sets, n_jobs=2)
-    #Y_sub_pred=(model.predict(X))
-    
-
-    
-    return Y_sub_pred , best_score
+    r2 = metrics.r2_score(Y, Y_sub_pred)
+    print 'score full dataset' ,r2
+    fi = np.array(zip(X.columns , model.feature_importances_))
+    print sorted(fi,key=lambda x: x[1])
+    return Y_sub_pred , best_score , model
 
 
 import numpy as np
@@ -208,6 +208,7 @@ import csv as csv
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn import cross_validation
+from sklearn import metrics
 from sklearn.dummy import DummyClassifier
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -252,28 +253,14 @@ for col in df.columns : print df.loc[df['People affected']>350000,col]
 #df['People affected'] = df['People affected (gov report)']
 #df = df[df['People affected']>2000]
 len(df[df['People affected (% 2010)']==0.5])
-improved_feauture_list = ['area_log' , 
-                          'elevation_log', 
-                          'poverty_frac', 
-                          'pop13_est_log',
-                          'pop_density_log' ,
-                          'wind_speed_log', 
-                          'dist_norm', 
-                          'surge_height_log', 
-                          'C/P Ratio',
-                          'rugged_index',
-                          'coastline_length',
-                          'dist_coast',
-                          'dist_coast_std',
-                          'rugged_index_std'
-                          'slope_mean', 
-                          'slope_std' ]
+
 
 
 df['Coastline length (m)'] = df['Coastline length (m)'] +1.0
 
 #----------------------------
 df['poverty_frac'] = df['Poverty (%)']/100.
+
 
 transformation = 'log_div_max_log'
 print  'transform as ' , transformation , '\n'
@@ -350,7 +337,6 @@ improved_feauture_list = ['area_log' ,
                           'wind_speed_log', 
                           'dist_norm', 
                           'surge_height_log', 
-                          'C/P Ratio',
                           'rugged_index',
                           'coastline_length',
                           'dist_coast',
@@ -359,94 +345,32 @@ improved_feauture_list = ['area_log' ,
                           'slope_mean', 
                           'slope_std', 
                           'rainfall',
+                          'C/P Ratio'
                           #14, 20, 40,130,190, 210
 ]
-X = df[improved_feauture_list]
-ids = df['M_Code']
-
-X.hist()
-plt.show()
-
-
-#$$$$$$$$$$$$$$$$$$$$$$   try to predict the pop % people affected
-predict_on = 'perc_people_affected'
-Y = df[predict_on]
-
-
-# model_name = 'linreg'
-# print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name 
-# #for i in range(len(X)): print X.iloc[i] 
-# Y_pred_linreg , best_linreg = model_pred(X,Y, maximize='r2' , model_type=model_name  ,limits = [-6 , 1 , 0.5] )
-# print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_linreg - Y))
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_linreg - Y)*(df['Population 2010 census'])  )  )
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_linreg - Y)*(df['Population 2010 census']) - df['People affected']  ) /  (df['People affected'] +1))
 
 
 
 
 
 
-# model_name = 'lasso'
-# print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name
-# Y_pred_lasso , best_lasso  = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [-6 , 1 , 0.5] )
-# print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_lasso - Y))
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_lasso - Y)*(df['Population 2010 census'])  )  )
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_lasso - Y)*(df['Population 2010 census']) - df['People affected']  ) / ( df['People affected']+1) )
 
-# model_name='randomforest'
-# print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name
-# Y_pred_randomforest , best_randomforest = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.5] )
-# print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_randomforest - Y))
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_randomforest - Y)*(df['Population 2010 census'])  )  )
-# print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_randomforest - Y)*(df['Population 2010 census']) - df['People affected']  ) /  (df['People affected']+1) )
-
-# Y_df = pd.DataFrame(Y.values )
-# Y_df.columns = [predict_on] 
-# Y_df['pred_'+predict_on] = Y_pred_randomforest
-
-
-
-
-# Y_df.describe()
-# Y_df['pred_'+predict_on].hist(bins=20,alpha=0.5)
-# Y_df[predict_on].hist(bins=40,alpha=0.5)
-# plt.show()
-# Y_df.plot()
-# plt.show()
-
-
-#stop()
-
-# predictions_file = open("predict_perc_pop.csv", "wb")
-# open_file_object = csv.writer(predictions_file)
-# open_file_object.writerow(["pcode","perc_affec_pred" , "perc_true"])
-# open_file_object.writerows(zip(ids, Y_pred_randomforest, Y.values))
-# predictions_file.close()
 
 
 df = df.dropna(subset=[ 'surge_height_log','pop10_log','perc_people_affected','poverty_frac' ,'Houses damaged (REACH)']).reset_index()
 
 X = df[improved_feauture_list]
-ids = df['M_Code']
+X.hist()
+plt.show()
 
 predict_on = 'Houses damaged (REACH)'
 Y = df[predict_on]/df['Population 2010 census']
 
-model_name='linreg'
-print '@@@@@@@@@@@@@@@@@  predict ' ,predict_on , ' with ' ,model_name  
 
-Y_pred_linreg , best = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [-6 , 1 , 0.5] )
-print model_name , ' mean house damage  error' , np.mean(abs(Y_pred_linreg - Y)*df['Population 2010 census'])
-#print 'linreg mean  house damage error' , np.mean(abs(Y_pred_linreg - Y))*df['People affected'].mean()
-
-model_name='lasso'
-Y_pred_lasso , best = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [-6 , 1 , 0.5] )
-print model_name , ' mean house damage error' , np.mean(abs(Y_pred_lasso - Y)*df['Population 2010 census'])
-#print 'lasso mean  pop affected error' , np.mean(abs(Y_pred_lasso - Y))*df['People affected'].mean()
 
 
 model_name='randomforest'
-Y_pred_randomforest , best = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.5] )
+Y_pred_randomforest , best , model_rf = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.5] )
 print model_name , 'mean house damage error' , np.mean(abs(Y_pred_randomforest - Y)*df['Population 2010 census'])
 #print 'randomforest mean pop affected error' , np.mean(abs(Y_pred_randomforest - Y))*df['People affected'].mean()
 
@@ -462,239 +386,10 @@ Y_df_h['num_'+predict_on_tag+'_error'] = abs(Y_df_h['num_'+predict_on_tag+'_pred
 Y_df_h['perc_'+predict_on_tag+'_error'] = abs(Y_df_h['perc_'+predict_on_tag+'_pred'] - Y_df_h['perc_'+predict_on_tag+'_true'])
 Y_df_h['rel_num_'+predict_on_tag+'_error'] = Y_df_h['num_'+predict_on_tag+'_error'] / Y_df_h['num_'+predict_on_tag+'_true'] 
 
+Y_df_h.describe()
 
 Y_df_h.to_csv("house_d_29062016.csv")
 
-Y_df_h[[u'num_houses_pred',u'num_houses_true',]].plot()
-Y_df_h['num_houses_pred'].hist(bins=20,alpha=0.5)
-Y_df_h['num_houses_true'].hist(bins=30,alpha=0.5)
 
-Y_df_h.describe()
-Y_df_h['pred_'+predict_on_tag].hist(bins=20,alpha=0.5)
-Y_df_h[predict_on].hist(bins=40,alpha=0.5)
-plt.show()
-Y_df_h.plot()
-plt.show()
 
 
-pred_house_perc  = Y_pred_randomforest
-pred_house_num = Y_pred_randomforest*df['Population 2010 census']
-true_house_perc = Y.values
-true_house_num
-
-predictions_file = open("predict_perc_house_damaged.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["pcode","perc_affec_pred" , 'perc_true' ])
-open_file_object.writerows(zip(ids, Y_pred_randomforest , Y.values))
-predictions_file.close()
-
-
-
-#Learning old feautures
-
-stop()
-print '0000000000000000000000000000000 old feautures 0000000000000000000000000000000'
-feauture_list = ['area_log' , 'elevation_log', 'poverty_frac', 'pop10_log','pop_density_log' ,'wind_speed_log', 'dist_norm', 'surge_height_log']
-X = df[feauture_list]
-ids = df['M_Code']
-
-
-
-
-
-#$$$$$$$$$$$$$$$$$$$$$$   try to predict the pop % people affected
-predict_on = 'perc_people_affected'
-Y = df[predict_on]
-
-
-model_name = 'linreg'
-print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name 
-#for i in range(len(X)): print X.iloc[i] 
-Y_pred_linreg , best_linreg = model_pred(X,Y, maximize='r2' , model_type=model_name  ,limits = [-6 , 1 , 0.5] )
-print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_linreg - Y))
-print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_linreg - Y)*(df['Population 2013 est.'])  )  )
-
-model_name = 'lasso'
-print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name
-Y_pred_lasso , best_lasso  = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [-6 , 1 , 0.5] )
-print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_lasso - Y))
-print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_lasso - Y)*(df['Population 2013 est.'])  )  )
-
-model_name='randomforest'
-print '&&&&&&&& predict ' ,predict_on , ' with ' ,model_name
-Y_pred_randomforest , best_randomforest = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.5] )
-print model_name , ' mean perc  pop affected error' , np.mean(abs(Y_pred_randomforest - Y))
-print model_name , '  pop affected error' , np.mean(  abs(  (Y_pred_randomforest - Y)*(df['Population 2013 est.'])  )  )
-
-
-
-
-
-stop()
-
-#fairly evenly distrib
-df['dist_norm'] = df['Distance from typhoon path (m)']/df['Distance from typhoon path (m)'].max()
-#put a floor in the distance estimation
-df.loc[df.dist_norm==0, 'dist_norm']=0.001
-df['people_affected_log']=np.log10(df['People affected'])
-
-df['people_affected_norm'] = df['People affected']/df['People affected'].max()
-df['people_affected_lognorm'] = df['people_affected_log']/df['people_affected_log'].max()
-
-
-
-#df['perc_people_affected']=(df['People affected']/df['Population 2010 census'])
-#df['perc_people_affected_log']=np.log10(df['perc_people_affected'])
-#df['perc_people_affected_lognorm']=(df['perc_people_affected_log'])/df['perc_people_affected_log'].max()
-
-
-df['pop13_est'] =df['Population 2013 est.'] / df['Population 2013 est.'].max()
-
-
-
-
-df['surge_risk']= df['Surge risk class (REACH)'].map( {'inland': 0, 'low': 0.3 , 'medium':0.6 ,'high':1.0})
-
-
-
-feauture_list = ['area_log' , 'elevation_log', 'poverty_frac', 'pop13_est_log','pop_density_log' ,'wind_speed_log', 'dist_norm', 'surge_height_log']
-
-
-
-
-
-
-
-
-
-
-
-
-Y = df['people_affected_lognorm']
-                                    
-#for i in range(len(X)): print X.iloc[i] 
-Y_pred_linreg , best = model_pred(X,Y, maximize='r2' , model_type='linreg' ,limits = [-6 , 1 , 0.5] )
-print 'linreg mean pop affected error' , np.mean(abs(10**((Y.values)*df['people_affected_log'].max()) - 10**(Y_pred_linreg*df['people_affected_log'].max())))
-
-Y_pred_lasso , best = model_pred(X,Y, maximize='r2' , model_type='lasso' ,limits = [-6 , 1 , 0.5] )
-print 'lasso mean pop affected error' , np.mean(abs(10**((Y.values)*df['people_affected_log'].max()) - 10**(Y_pred_lasso*df['people_affected_log'].max())))
-
-
-
-Y_pred_randomforest , best = model_pred(X,Y, maximize='r2' , model_type='randomforest' ,limits = [1 , 3.5 , 0.5] )
-print 'randomforest mean pop affected error' , np.mean(abs(10**((Y.values)*df['people_affected_log'].max()) - 10**(Y_pred_randomforest*df['people_affected_log'].max())))
-
-
-
-
-
-
-
-
-
-predictions_file = open("predict_perc_pop.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["pcode","perc_affec_pred" ])
-open_file_object.writerows(zip(ids, Y_pred_randomforest))
-predictions_file.close()
-
-
-
-
-df = df.dropna(subset=[ 'surge_height_log','pop13_est_log','people_affected_norm', 'Houses damaged (REACH)' ])
-
-X = df[feauture_list]
-
-
-Y = df['Houses damaged (REACH)']
-                                    
-#for i in range(len(X)): print X.iloc[i] 
-Y_pred_linreg , best = model_pred(X,Y, maximize='r2' , model_type='linreg' ,limits = [-6 , 1 , 0.5] )
-print 'linreg mean house damage  error' , np.mean(abs(Y_pred_linreg - Y))
-#print 'linreg mean  house damage error' , np.mean(abs(Y_pred_linreg - Y))*df['People affected'].mean()
-
-
-Y_pred_lasso , best = model_pred(X,Y, maximize='r2' , model_type='lasso' ,limits = [-6 , 1 , 0.5] )
-print 'lasso mean house damage error' , np.mean(abs(Y_pred_lasso - Y))
-#print 'lasso mean  pop affected error' , np.mean(abs(Y_pred_lasso - Y))*df['People affected'].mean()
-
-
-
-Y_pred_randomforest , best = model_pred(X,Y, maximize='r2' , model_type='randomforest' ,limits = [1 , 3.5 , 0.5] )
-print 'randomforest mean house damage error' , np.mean(abs(Y_pred_randomforest - Y))
-#print 'randomforest mean pop affected error' , np.mean(abs(Y_pred_randomforest - Y))*df['People affected'].mean()
-
-
-
-
-
-predictions_file = open("predict_house_damage.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["pcode","perc_affec_pred" ])
-open_file_object.writerows(zip(ids, Y_pred_randomforest))
-predictions_file.close()
-
-
-Y = df['Houses damaged (REACH)'] / df['People affected']
-                                    
-#for i in range(len(X)): print X.iloc[i] 
-Y_pred_linreg , best = model_pred(X,Y, maximize='r2' , model_type='linreg' ,limits = [-6 , 1 , 0.5] )
-print 'linreg mean house perc damage  error' , np.mean(abs(Y_pred_linreg - Y))
-print 'linreg mean  houseperc damage error' , np.mean(abs(Y_pred_linreg - Y))*df['People affected'].mean()
-
-
-Y_pred_lasso , best = model_pred(X,Y, maximize='r2' , model_type='lasso' ,limits = [-6 , 1 , 0.5] )
-print 'lasso mean house perc damage error' , np.mean(abs(Y_pred_lasso - Y))
-print 'lasso mean house affected error' , np.mean(abs(Y_pred_lasso - Y))*df['People affected'].mean()
-
-
-
-Y_pred_randomforest , best = model_pred(X,Y, maximize='r2' , model_type='randomforest' ,limits = [1 , 3.5 , 0.5] )
-print 'randomforest mean house perc damage error' , np.mean(abs(Y_pred_randomforest - Y))
-print 'randomforest mean pop affected error' , np.mean(abs(Y_pred_randomforest - Y))*df['People affected'].mean()
-
-
-
-
-
-predictions_file = open("predict_perc_house_damage.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["pcode","perc_affec_pred" ])
-open_file_object.writerows(zip(ids, Y_pred_randomforest))
-predictions_file.close()
-
-
-
-TODO()
-#try to predict the pop density 
-
-Y = df['perc_people_affected']
-                                    
-#for i in range(len(X)): print X.iloc[i] 
-Y_pred_linreg , best = model_pred(X,Y, maximize='r2' , model_type='linreg' ,limits = [-6 , 1 , 0.5] )
-print 'mean perc  pop affected error' , np.mean(abs(Y_pred_linreg - Y))
-print 'mean  pop affected error' , np.mean(abs(Y_pred_linreg - Y))*df['People affected'].mean()
-
-Y_pred_lasso , best = model_pred(X,Y, maximize='r2' , model_type='lasso' ,limits = [-6 , 1 , 0.5] )
-print 'mean perc  pop affected error' , np.mean(abs(Y_pred_lasso - Y))
-print 'mean  pop affected error' , np.mean(abs(Y_pred_lasso - Y))*df['People affected'].mean()
-
-
-
-Y_pred_randomforest , best = model_pred(X,Y, maximize='r2' , model_type='randomforest' ,limits = [1 , 3.5 , 0.5] )
-print 'mean perc pop affected error' , np.mean(abs(Y_pred_randomforest - Y))
-print 'mean pop affected error' , np.mean(abs(Y_pred_randomforest - Y))*df['People affected'].mean()
-
-Y.reset_index().plot()
-Y_pred_randomforest.plot()
-df_sort['People affected'].reset_index().plot()
-
-
-Y.reset_index()['perc_people_affected'].plot()
-Y_pred_randomforest.reset_index()[0].plot()
-abs(Y.reset_index()['perc_people_affected']-Y_pred_randomforest.reset_index()[0]).plot()
-Y['pred'] = Y_pred_randomforest
-Y_s=Y.sort('perc_people_affected')
-Y_s['perc_people_affected'].reset_index().plot()
-
-Y_s['pred'.reset_index()].plot()
