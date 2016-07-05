@@ -329,8 +329,8 @@ df = df.dropna(subset=[ 'surge_height_log','pop10_log','perc_people_affected','p
 
 
 
-improved_feauture_list = ['area_log' , 
-                          'elevation_log', 
+improved_feauture_list = [#'area_log' , 
+                          #'elevation_log', 
                           'poverty_frac', 
                           'pop10_log',
                           'pop_density_log' ,
@@ -338,14 +338,14 @@ improved_feauture_list = ['area_log' ,
                           'dist_norm', 
                           'surge_height_log', 
                           'rugged_index',
-                          'coastline_length',
+                          #'coastline_length',
                           'dist_coast',
-                          'dist_coast_std',
-                          'rugged_index_std',
-                          'slope_mean', 
-                          'slope_std', 
+                          #'dist_coast_std',
+                          #'rugged_index_std',
+                          #'slope_mean', 
+                          #'slope_std', 
                           'rainfall',
-                          'C/P Ratio'
+                          #'C/P Ratio'
                           #14, 20, 40,130,190, 210
 ]
 
@@ -386,7 +386,11 @@ Y_df_h['num_'+predict_on_tag+'_error'] = abs(Y_df_h['num_'+predict_on_tag+'_pred
 Y_df_h['perc_'+predict_on_tag+'_error'] = abs(Y_df_h['perc_'+predict_on_tag+'_pred'] - Y_df_h['perc_'+predict_on_tag+'_true'])
 Y_df_h['rel_num_'+predict_on_tag+'_error'] = Y_df_h['num_'+predict_on_tag+'_error'] / Y_df_h['num_'+predict_on_tag+'_true'] 
 
-Y_df_h.describe()
+
+
+
+
+print Y_df_h.describe()
 
 Y_df_h.to_csv("house_d_29062016.csv")
 
