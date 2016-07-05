@@ -145,8 +145,9 @@ def model_pred(X,Y, maximize='accuracy' , model_type='logreg' ,limits = [-3 , 1 
             model = linear_model.Lasso(alpha =  lambd )
         elif model_type=='randomforest' :
             model = RandomForestRegressor(n_estimators =int(lambd), n_jobs=2)
-        elif model_type=='GBT' :
-            model = GradientBoostingClassifier(n_estimators=int(lambd), learning_rate=1.0,max_depth=1, random_state=0)
+        elif model_type=='GBR' :
+            model = GradientBoostingRegressor(n_estimators=int(lambd))
+
         r2 = cross_validation.cross_val_score(model, X_train, Y_train, cv=n_cv_sets, scoring='r2')
         #print 'accuracy split' , accuracy
         print("r2: %0.2f (+/- %0.2f)" % (r2.mean(), r2.std() * 2))
@@ -175,14 +176,15 @@ def model_pred(X,Y, maximize='accuracy' , model_type='logreg' ,limits = [-3 , 1 
         model = RandomForestRegressor(n_estimators =int(best_lambda), n_jobs=2)
         model.fit(X_train, Y_train)
         #print zip(X_train.columns , model.feature_importances_)
-    elif model_type=='GBT' :
-        model = GradientBoostingClassifier(n_estimators=int(best_lambda), learning_rate=1.0,max_depth=1, random_state=0)
-
+    elif model_type=='GBR' :
+        model = GradientBoostingRegressor(n_estimators=int(best_lambda))
+        model.fit(X_train, Y_train)
     elif model_type=='NN' :
         model = GradientBoostingClassifier(n_estimators=int(best_lambda), learning_rate=1.0,max_depth=1, random_state=0)
 
         model.fit(X_train, Y_train)
-
+    fi = np.array(zip(X.columns , model.feature_importances_))
+    print sorted(fi,key=lambda x: x[1])
     print '===params best model' ,model.get_params()
     score_test = model.score(X_test, Y_test)
     print 'score test' ,score_test
@@ -215,8 +217,9 @@ from sklearn.metrics import confusion_matrix
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score
 from sklearn.svm import SVC
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
+
 import string
 #df = pd.read_excel('Haiyan_Overview.xlsx')
 #df = pd.read_excel('150707_Philippines_MultiplicModel_and_DEA(1I_2O_CCR_O)output_combined.xlsx',sheetname='DataWithDEA')
@@ -370,7 +373,8 @@ Y = df[predict_on]/df['Population 2010 census']
 
 
 model_name='randomforest'
-Y_pred_randomforest , best , model_rf = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.5] )
+#model_name='GBR'
+Y_pred_randomforest , best , model_rf = model_pred(X,Y, maximize='r2' , model_type=model_name ,limits = [1 , 3.5 , 0.3] )
 print model_name , 'mean house damage error' , np.mean(abs(Y_pred_randomforest - Y)*df['Population 2010 census'])
 #print 'randomforest mean pop affected error' , np.mean(abs(Y_pred_randomforest - Y))*df['People affected'].mean()
 
@@ -395,5 +399,8 @@ print Y_df_h.describe()
 Y_df_h.to_csv("house_d_29062016.csv")
 
 
-
+Y_df_h[[u'num_houses_pred',u'num_houses_true',]].plot()
+Y_df_h['num_houses_pred'].hist(bins=20,alpha=0.5)
+Y_df_h['num_houses_true'].hist(bins=30,alpha=0.5)
+plt.show()
 
