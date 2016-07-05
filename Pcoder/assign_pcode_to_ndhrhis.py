@@ -6,7 +6,7 @@ def find_best_match( poss_matches , name_to_match ):
         dict =  {k: v for k, v in zip(poss_matches, ratio)}
         ##SOMINOT DON MARIANO MARCOS
 #sominot
-error
+#error
         #print zip(poss_matches , cost_edit)
         #print zip(poss_matches , cost_masi)
         #print zip(poss_matches , cos_jaccardt)
@@ -44,12 +44,12 @@ import operator
 #add percentages of exact matches 
 
 #read the Pcodes for provinces , municipalities and barangays
-df_pcodes_pro = pd.read_excel('../PCodes/PCodes/data.xlsx',sheetname='Province', 
+df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
                               skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8')
 df_pcodes_pro.columns = ['Pcode_province',
                          'name_province']
 
-df_pcodes_mun = pd.read_excel('../PCodes/PCodes/data.xlsx',sheetname='Municipality', 
+df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
                               skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
 df_pcodes_mun.columns = ['Pcode_province',
                          'name_province', 
@@ -57,7 +57,7 @@ df_pcodes_mun.columns = ['Pcode_province',
                          'name_municipality']
 
 
-df_pcodes_bar = pd.read_excel('../PCodes/PCodes/data.xlsx',sheetname='Barangay', 
+df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
                               skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
 df_pcodes_bar.columns = ['Pcode_municipality',
                          'name_municipality', 
