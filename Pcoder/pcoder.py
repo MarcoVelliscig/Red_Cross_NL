@@ -1,42 +1,62 @@
-def find_best_match_user_input( poss_matches , name_to_match, score_threshold, use_tricks=False):
+# L2_name               SAN JOSE
+# L3_name                 ATABAY
+# L1_name                ANTIQUE
+# L1_code                    NaN
+# L1_best_match_name         NaN
+# L2_code                    NaN
+# L2_best_match_name         NaN
+# L3_code                    NaN
+# L3_best_match_name         NaN
 
-        if use_tricks :
-                poss_matches_trim = [poss_matches[i].replace('(CAPITAL)','').replace('CITY','').replace('OF','') for i in range(len(poss_matches))]
-                regex = re.compile(".*?\((.*?)\)")
-                poss_matches_trim = [re.sub("[\(\[].*?[\)\]]", "", poss_matches_trim[i]) for i in range(len(poss_matches))]
-                name_to_match_trim = name_to_match.replace('CITY','').replace('OF','').strip()
 
 
-        else:
-              poss_matches_trim = poss_matches
-              name_to_match_trim= name_to_match
-              
-        ratio = [(difflib.SequenceMatcher(None,poss_matches_trim[i], name_to_match_trim)).ratio() \
-                 for i in range(len(poss_matches))]
 
-        vec_poss = np.array(zip(poss_matches, ratio))
-        vec_poss_sorted = np.array(sorted(vec_poss ,key=lambda x: x[1], reverse=True))
-        most_prob_name_match = vec_poss_sorted[0,0]
-        best_ratio = vec_poss_sorted[0,1]
-        if float(best_ratio) < score_threshold: 
-            #ask if the possible match is right
-            print 'is ' , most_prob_name_match , 'the right match for ' , name_to_match , '(score:',best_ratio , ')'
-            respond = raw_input('Return for yes, everything else for no : ')
+# error 21
 
-            if respond != '' : 
-                sorted_prob_name_match =vec_poss_sorted[:,0]
-                sorted_prob_name_match_numbered = np.array(zip(sorted_prob_name_match, range(len(sorted_prob_name_match))))
-                print '\n select from the best match for ' ,name_to_match ,' from this list: \n',  sorted_prob_name_match_numbered
-                selected_index = raw_input('select the right choice by number, write -1 for none of the above : ')
-                if int(selected_index) == -1 :
-                    most_prob_name_match  = 'Not found'
+
+
+
+
+def find_best_match_user_input( poss_matches , name_to_match, score_threshold, known_matches , use_tricks=False):
+        try :
+                best_match = known_matches[name_to_match]
+        except:
+                if use_tricks :
+                        poss_matches_trim = [poss_matches[i].replace('(CAPITAL)','').replace('CITY','').replace('OF','') for i in range(len(poss_matches))]
+                        regex = re.compile(".*?\((.*?)\)")
+                        poss_matches_trim = [re.sub("[\(\[].*?[\)\]]", "", poss_matches_trim[i]) for i in range(len(poss_matches))]
+                        name_to_match_trim = name_to_match.replace('CITY','').replace('OF','').strip()
+
 
                 else:
-                    most_prob_name_match = sorted_prob_name_match_numbered[int(selected_index),0]
+                      poss_matches_trim = poss_matches
+                      name_to_match_trim= name_to_match
 
+                ratio = [(difflib.SequenceMatcher(None,poss_matches_trim[i], name_to_match_trim)).ratio() \
+                         for i in range(len(poss_matches))]
 
-            print '==' , most_prob_name_match , 'is the right match for ' , name_to_match, '\n'
-        best_match=most_prob_name_match
+                vec_poss = np.array(zip(poss_matches, ratio))
+                vec_poss_sorted = np.array(sorted(vec_poss ,key=lambda x: x[1], reverse=True))
+                most_prob_name_match = vec_poss_sorted[0,0]
+                best_ratio = vec_poss_sorted[0,1]
+                if float(best_ratio) < score_threshold: 
+                    #ask if the possible match is right
+                    print 'is ' , most_prob_name_match , 'the right match for ' , name_to_match , '(score:',best_ratio , ')'
+                    respond = raw_input('Return for yes, everything else for no : ')
+
+                    if respond != '' : 
+                        sorted_prob_name_match =vec_poss_sorted[:,0]
+                        sorted_prob_name_match_numbered = np.array(zip(sorted_prob_name_match, range(len(sorted_prob_name_match))))
+                        print '\n select from the best match for ' ,name_to_match ,' from this list: \n',  sorted_prob_name_match_numbered
+                        selected_index = raw_input('select the right choice by number, write -1 for none of the above : ')
+                        if int(selected_index) == -1 :
+                            most_prob_name_match  = 'Not found'
+
+                        else:
+                            most_prob_name_match = sorted_prob_name_match_numbered[int(selected_index),0]
+                known_matches[name_to_match] = most_prob_name_match
+                print '==' , most_prob_name_match , 'is the right match for ' , name_to_match, '\n'
+                best_match=most_prob_name_match
 
         return best_match 
 
@@ -130,7 +150,7 @@ df_template.columns = ['L1_code',
 
 
 #########################################################################
-option =0
+option =1
 
 
 if option == 0 :
@@ -159,7 +179,7 @@ if option == 1 :
         # INPUT
         #specify the file you want to pcode
         df_raw = pd.read_csv('ndhrhis_v1.csv')
-        sav_name = 'ndhrhis_v1_pcoded_080716.csv'
+        sav_name = 'ndhrhis_v1_pcoded_110716.csv'
         #specify which columns correspont do what
         dict_raw = {'municipality':'L2_name' , 
                     'province'  : 'L1_name'}
@@ -195,6 +215,7 @@ for admin_level in level_tag:
         df_template[admin_level+'_name']=df_template[admin_level+'_name'].str.upper()
         df[admin_level+'_name']=df[admin_level+'_name'].str.upper()
         df[admin_level+'_code'] = np.NaN 
+        df[admin_level+'_best_match_name'] = np.NaN 
 
 
 
@@ -206,6 +227,7 @@ verbose = False
 n_perfect_matches =0 
 n_no_matches =0 
 counter = 0 
+known_matches = {}
 for index in df.index : 
 #for index in df.index[0:10] : 
         df_template_matches = df_template
@@ -230,7 +252,7 @@ for index in df.index :
                         print "perc completed " , ((float(counter)/len(df.index))*100),'\n'
                         poss_matches = (df_template_matches[admin_level+'_name'].drop_duplicates()).values
                         score_threshold=threshold[admin_level]                     
-                        best_match  = find_best_match_user_input( poss_matches , name_admin_level, score_threshold, use_tricks = name_tricks) 
+                        best_match  = find_best_match_user_input( poss_matches , name_admin_level, score_threshold, known_matches ,  use_tricks = name_tricks) 
                         if best_match == 'Not found' :  
                                 n_no_matches +=1 
                                 break 
@@ -250,6 +272,7 @@ for index in df.index :
                         if verbose : print df_template_matches
                         for admin_level_tag in level_tag: 
                                 df.loc[index,admin_level_tag+'_code']=df_template_matches[admin_level_tag+'_code'].values
+                                df.loc[index,admin_level_tag+'_best_match_name']=df_template_matches[admin_level_tag+'_name'].values
                 #add dictionary with known matches
         counter+=1
 
