@@ -3,7 +3,14 @@
 # released under GNU GENERAL PUBLIC LICENSE Version 3
 
 
-def find_best_match_user_input( poss_matches , name_to_match,  upper_level , score_threshold, known_matches , use_tricks=False):
+def find_best_match_user_input( poss_matches , 
+                                name_to_match,  
+                                upper_level , 
+                                score_threshold, 
+                                reject_threshold, 
+                                known_matches , 
+                                use_tricks=False):
+
         known_match_tag = name_to_match+ ' ' + upper_level
         try :
                 #known matches should have the previus level if available
@@ -40,21 +47,32 @@ def find_best_match_user_input( poss_matches , name_to_match,  upper_level , sco
                         return most_prob_name_match
 
                 best_ratio = vec_poss_sorted[0,1]
-                if float(best_ratio) < score_threshold: 
+
+                if float(best_ratio) <= reject_threshold:
+                        most_prob_name_match  = 'Not found'
+                        
+                elif (float(best_ratio) > reject_threshold) & \
+                     (float(best_ratio) < score_threshold): 
                     #ask if the possible match is right
-                    print 'is ' , most_prob_name_match , 'the right match for ' , name_to_match , '(score:',best_ratio , ')'
-                    respond = raw_input('press return for yes, everything else for no : ')
+                        print 'is ' , most_prob_name_match , 'the right match for ' , name_to_match , '(score:',best_ratio , ')'
+                        respond = raw_input('press return for yes, everything else for no : ')
 
-                    if respond != '' : 
-                        sorted_prob_name_match =vec_poss_sorted[:,0]
-                        sorted_prob_name_match_numbered = np.array(zip(sorted_prob_name_match, range(len(sorted_prob_name_match))))
-                        print '\n select from the best match for ' ,name_to_match ,' from this list: \n',  sorted_prob_name_match_numbered
-                        selected_index = raw_input('select the right choice by number, press return for not found : ')
-                        if selected_index == '' :
-                            most_prob_name_match  = 'Not found'
+                        if respond != '' : 
+                                sorted_prob_name_match =vec_poss_sorted[:,0]
+                                sorted_prob_name_match_numbered = np.array(zip(sorted_prob_name_match, range(len(sorted_prob_name_match))))
+                                print '\n select from the best match for ' ,name_to_match ,' from this list: \n',  sorted_prob_name_match_numbered
 
-                        else:
-                            most_prob_name_match = sorted_prob_name_match_numbered[int(selected_index),0]
+                                while True : 
+                                        selected_index = raw_input('select the right choice by number, press return for not found : ')
+                                        if selected_index == '' :
+                                                most_prob_name_match  = 'Not found'
+                                                break
+
+                                        elif selected_index.isdigit():
+                                                most_prob_name_match = sorted_prob_name_match_numbered[int(selected_index),0]
+                                                break
+                                        else:
+                                                continue
                 
                 known_matches[known_match_tag] = most_prob_name_match 
                 print '==' , most_prob_name_match , 'is the right match for ' , name_to_match , best_ratio , '\n'
@@ -92,50 +110,50 @@ import re
 #add percentages of exact matches 
 
 
-
+produce_template =0
 #########################################################################
 #this part can be commented out if a template has already been produced
+if produce_template :
+
+        #building template file for the philippines
+        #this part is philippines specific
+        # a template should have a name and pcode for every admin level
+
+        # read the Pcodes from template files
+        # for provinces , municipalities and barangays
+        df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
+                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8')
+        df_pcodes_pro.columns = ['Pcode_province',
+                                 'name_province']
+
+        df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
+                                      skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
+        df_pcodes_mun.columns = ['Pcode_province',
+                                 'name_province', 
+                                 'Pcode_municipality',
+                                 'name_municipality']
 
 
-#building template file for the philippines
-#this part is philippines specific
-# a template should have a name and pcode for every admin level
+        df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
+                                      skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
+        df_pcodes_bar.columns = ['Pcode_municipality',
+                                 'name_municipality', 
+                                 'Pcode_barangay',
+                                 'name_barangay']
 
-# read the Pcodes from template files
-# for provinces , municipalities and barangays
-df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
-                              skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8')
-df_pcodes_pro.columns = ['Pcode_province',
-                         'name_province']
+        #build a template file with the 3 admin levels
 
-df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
-                              skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
-df_pcodes_mun.columns = ['Pcode_province',
-                         'name_province', 
-                         'Pcode_municipality',
-                         'name_municipality']
+        # create a template dataframe
+        #first create a template for L1 L2 L3 admin level names and codes
+        df_template =  pd.merge(df_pcodes_mun, df_pcodes_bar, 
+                                 left_on ='Pcode_municipality', 
+                                 right_on='Pcode_municipality', 
+                                 how = 'inner')
 
+        df_template = df_template[[u'Pcode_province', u'name_province', u'Pcode_municipality',
+               u'name_municipality_x',  u'Pcode_barangay', u'name_barangay']]
 
-df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
-                              skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
-df_pcodes_bar.columns = ['Pcode_municipality',
-                         'name_municipality', 
-                         'Pcode_barangay',
-                         'name_barangay']
-
-#build a template file with the 3 admin levels
-
-# create a template dataframe
-#first create a template for L1 L2 L3 admin level names and codes
-df_template =  pd.merge(df_pcodes_mun, df_pcodes_bar, 
-                         left_on ='Pcode_municipality', 
-                         right_on='Pcode_municipality', 
-                         how = 'inner')
-
-df_template = df_template[[u'Pcode_province', u'name_province', u'Pcode_municipality',
-       u'name_municipality_x',  u'Pcode_barangay', u'name_barangay']]
-
-df_template.to_csv('pcode_template_philippines.csv',encoding='utf-8')
+        df_template.to_csv('pcode_template_philippines.csv',encoding='utf-8')
 
 ##########################################################################
 
@@ -169,7 +187,7 @@ df_template = df_template.drop_duplicates()
 
 
 #########################################################################
-option =0
+option =2
 
 #preset input options for philippines
 if option == 0 :
@@ -191,10 +209,11 @@ if option == 0 :
         #threshold of 0.0 means there is no user imput but less safe results
         #threshold of 1.0 means that the code will always ask user input
         #this threshold should be higher for higher admin levels
-        threshold = {'L1':0.9, 'L2':0.7, 'L3':0.7}
-
+        ask_below_score =  {'L1':0.9, 'L2':0.7, 'L3':0.7}
+        reject_below_score=  {'L1':0.55, 'L2':0.55, 'L3':0.55}
         #if True it removes indications of city, capital and (names in parethesis)
         name_tricks = True
+
 
 
 
@@ -212,15 +231,40 @@ if option == 1 :
         #specify the levels in the file
         level_tag = ['L1', 'L2' ]
         #different confidence level for different admin levels
-        threshold = {'L1':0.9, 'L2':0.7}
-
+        ask_below_score= {'L1':0.9, 'L2':0.7}
+        reject_below_score=  {'L1':0.6, 'L2':0.6}
         #if True it removes indications of city, capital and (names in parethesis)
         name_tricks = True
 
+if option == 2 :
+        # INPUT
+        #specify the file you want to pcode
+        filename = 'governance_index.xlsx'
+        
+        #specify the output file name
+        sav_name = 'governance_index_pcoded_250716.csv'
+        #specify which columns correspont do what
+        dict_raw = {'municipality':'L2_name' , 
+                    'province'  : 'L1_name'}
 
 
+        #specify the levels in the file
+        level_tag = ['L1', 'L2' ]
+        #different confidence level for different admin levels
+        ask_below_score= {'L1':0.9, 'L2':0.7}
+        reject_below_score=  {'L1':0., 'L2':0.}
+        #if True it removes indications of city, capital and (names in parethesis)
+        name_tricks = True
 
-df_raw = pd.read_csv(filename)
+if filename.split(".")[-1] == 'csv' :
+        df_raw = pd.read_csv(filename,encoding='utf-8')
+elif filename.split(".")[-1] == 'xlsx' :
+        df_raw = pd.read_excel(filename,encoding='utf-8')
+
+# make the df_raw uppercase for merging pourposes 
+# see the end of the code
+for i in range(len(dict_raw)) : df_raw[dict_raw.keys()[i]]=df_raw[dict_raw.keys()[i]].str.upper()
+
 df = df_raw[dict_raw.keys()]
 df.columns = [dict_raw.values()]
 df = df.drop_duplicates()
@@ -279,8 +323,10 @@ for index in df.index :
                 elif (n_matches_current_level) == 0 :
                         print "perc completed " , ((float(counter)/len(df.index))*100),'\n'
                         poss_matches = (df_template_matches[admin_level+'_name'].drop_duplicates()).values
-                        score_threshold=threshold[admin_level]                     
-                        best_match  = find_best_match_user_input( poss_matches , name_admin_level,  upper_level , score_threshold, known_matches ,  use_tricks = name_tricks) 
+                        score_threshold=ask_below_score[admin_level]     
+                        reject_threshold=reject_below_score[admin_level]       
+                        
+                        best_match  = find_best_match_user_input( poss_matches , name_admin_level,  upper_level , score_threshold, reject_threshold, known_matches ,  use_tricks = name_tricks) 
                         if best_match == 'Not found' :  
                                n_no_matches +=1 
                                print '************* Not found'
