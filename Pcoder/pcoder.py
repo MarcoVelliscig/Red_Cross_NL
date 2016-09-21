@@ -3,6 +3,19 @@
 # released under GNU GENERAL PUBLIC LICENSE Version 3
 
 
+# to do
+# find the most common words (city of capital) that need to be cleaned out
+# to be provided as a list
+# add extra word metric as an option
+# add support for multiple words (different lenguages?)
+# write a unit test
+
+def construct_known_match_tag(name , upper_level):
+        """ Function that creates a tag with the name and the previus level
+        to be added to the list of known matches
+        """ 
+        return name+ ' ' + upper_level
+
 def find_best_match_user_input( poss_matches , 
                                 name_to_match,  
                                 upper_level , 
@@ -10,15 +23,20 @@ def find_best_match_user_input( poss_matches ,
                                 reject_threshold, 
                                 known_matches , 
                                 use_tricks=False):
-
-        known_match_tag = name_to_match+ ' ' + upper_level
+        """ record linkage function that selects from a list of candidates name
+        the best match for a given name applying string metrics 
+        a list of known matches is also passed
+        thresholds can be specified
+        """
+        
+        known_match_tag = construct_known_match_tag(name_to_match , upper_level)
+        #try first if the target is in the known matches dictionary
         try :
-                #known matches should have the previus level if available
-                #known matches are coded with the previus level to avois 
-                #same names in different admin level to be treated the same
                 best_match = known_matches[known_match_tag]
         except:
                 if use_tricks :
+                        #trim the strings from words like city and capital that can reduce 
+                        # the accuarcy of the match
                         poss_matches_trim = [poss_matches[i].replace('CITY','').replace('OF','').strip() for i in range(len(poss_matches))]
                         regex = re.compile(".*?\((.*?)\)")
                         poss_matches_trim = [re.sub("[\(\[].*?[\)\]]", "", poss_matches_trim[i]) for i in range(len(poss_matches))]
@@ -33,7 +51,7 @@ def find_best_match_user_input( poss_matches ,
 
                 ratio = [(difflib.SequenceMatcher(None,poss_matches_trim[i], name_to_match_trim)).ratio() \
                          for i in range(len(poss_matches))]
-
+                #vector containing all possibilities with their score
                 vec_poss = np.array(zip(poss_matches, ratio))
                 vec_poss_sorted = np.array(sorted(vec_poss ,key=lambda x: x[1], reverse=True))
                 try: 
@@ -73,7 +91,7 @@ def find_best_match_user_input( poss_matches ,
                                                 break
                                         else:
                                                 continue
-                
+                #update the known matched dictionary
                 known_matches[known_match_tag] = most_prob_name_match 
                 print '==' , most_prob_name_match , 'is the right match for ' , name_to_match , best_ratio , '\n'
                 best_match=most_prob_name_match
@@ -81,38 +99,116 @@ def find_best_match_user_input( poss_matches ,
         return best_match 
 
 
+def match_against_template(df , df_template, level_tag ,ask_below_score, reject_below_score,exception = [] , reverse = False, verbose = False):
+        
+        
+
+        # the code usually does the matching from the shallower to the deeper level
+        # but it can also go the other way around even if it is less efficient this way
+        # if you combine the 2 approaches you should account for most cases
+        known_matches={}
+        counter =0
+        n_perfect_matches =0 
+        n_no_matches =0 
+        if reverse : 
+                level_tag_use = list(reversed(level_tag))
+        else:
+                level_tag_use = level_tag 
+        # do the search only for those line where the deepest 
+        # admin level is null
+        for index in  df.loc[df[level_tag[-1]+'_code'].isnull()].index :
+
+                df_template_matches = df_template
+                upper_level = ''
+                for admin_level in level_tag_use :
+                        if verbose : 
+                                print 'len template dataframe level', admin_level\
+                                        , len(df_template_matches)
+                                print df_template_matches.describe()
+                        
+                        #gets the name of the admin level for the index entry
+                        name_admin_level = df.loc[index][admin_level+'_name']
+                        if name_admin_level in  exception : continue
+                        # it tries to get a perfect match straight away
+                        # !!!! this is not needed if a match is made by merge first
+                        
+                        n_matches_current_level = sum(df_template_matches[admin_level+'_name']==
+                                              name_admin_level)
+                        if verbose : print 'num matches', admin_level ,  n_matches_current_level
+                
+
+
+                        if (n_matches_current_level) > 0 :
+                                if verbose : print ''
+
+                        elif (n_matches_current_level) == 0 :
+                                print "perc completed " , ((float(counter)/len(df.index))*100),'\n'
+                                poss_matches = (df_template_matches[admin_level+'_name'].drop_duplicates()).values
+                                score_threshold=ask_below_score[admin_level]     
+                                reject_threshold=reject_below_score[admin_level]       
+
+                                best_match  = find_best_match_user_input( poss_matches , name_admin_level,  upper_level , score_threshold, reject_threshold, known_matches ,  use_tricks = name_tricks) 
+                                if best_match == 'Not found' :  
+                                       n_no_matches +=1 
+                                       #print '************* Not found, doing full search **********'
+                                       print df.loc[index]
+                                       #add here the full search instead 
+                                       
+                                       #break 
+                                elif best_match == 'error' :         
+                                       n_no_matches +=1 
+                                       print '************* error admin ' , admin_level , name_admin_level
+                                       print df.loc[index]
+
+                                       break
+                                #print 'admin ' , admin_level , name_admin_level ,  'bestmatch ' , best_match , score_m , 'edit dist' , edit_distance(best_match , name_admin_level), '\n'
+                                name_admin_level = best_match
+                                n_matches_current_level = sum(df_template_matches[admin_level+'_name']==
+                                                      name_admin_level)
+
+                        df_template_matches = df_template_matches.loc[
+                                df_template_matches[admin_level+'_name']==name_admin_level]
+
+                        if (n_matches_current_level) == 0 & (admin_level== level_tag[-1]):
+                                n_no_matches +=1 
+                        if n_matches_current_level == 1 :
+
+                                n_perfect_matches +=1
+                                if verbose : print df_template_matches
+                                for admin_level_tag in level_tag: 
+
+                                        df.loc[index,admin_level_tag+'_code']=(df_template_matches[admin_level_tag+'_code'].values[0])
+                                        df.loc[index,admin_level_tag+'_best_match_name']=(df_template_matches[admin_level_tag+'_name'].values[0])
+                        upper_level += admin_level + df.loc[index][admin_level+'_name']
+                        #add dictionary with known matches
+                counter+=1
+
+        return df
 
 
 
 import numpy as np
-from scipy import optimize
-from pylab import scatter, show, legend, xlabel, ylabel
-from sklearn import linear_model, datasets
-from sklearn.ensemble import RandomForestClassifier 
-import csv as csv
-import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn import cross_validation
-from sklearn.dummy import DummyClassifier
-from sklearn.cross_validation import train_test_split
-from sklearn.metrics import confusion_matrix
-from sklearn.svm import SVC
-from sklearn.metrics import f1_score
-from sklearn.svm import SVC
-from sklearn.ensemble import GradientBoostingClassifier
-import string
 import difflib
-from nltk.metrics import edit_distance
-from nltk.metrics import masi_distance
-from nltk.metrics import jaccard_distance
-import operator
+# alternative metrics
+# from nltk.metrics import edit_distance
+# from nltk.metrics import masi_distance
+# from nltk.metrics import jaccard_distance
+# import operator
 import re
-#add percentages of exact matches 
 
 
-produce_template =0
+
+
+
+
+
+produce_template =False
+#add a string in front of the pcode
+preappend_string = 'PH'
+
 #########################################################################
-#this part can be commented out if a template has already been produced
+#this part can be skipped if a template has already been produced
 if produce_template :
 
         #building template file for the philippines
@@ -122,12 +218,13 @@ if produce_template :
         # read the Pcodes from template files
         # for provinces , municipalities and barangays
         df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
-                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8')
+                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str})
+
         df_pcodes_pro.columns = ['Pcode_province',
                                  'name_province']
 
         df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
-                                      skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
+                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
         df_pcodes_mun.columns = ['Pcode_province',
                                  'name_province', 
                                  'Pcode_municipality',
@@ -135,7 +232,7 @@ if produce_template :
 
 
         df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
-                                      skiprows = 1 , skip_footer = 21,header=None,encoding='utf-8')
+                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
         df_pcodes_bar.columns = ['Pcode_municipality',
                                  'name_municipality', 
                                  'Pcode_barangay',
@@ -152,6 +249,11 @@ if produce_template :
 
         df_template = df_template[[u'Pcode_province', u'name_province', u'Pcode_municipality',
                u'name_municipality_x',  u'Pcode_barangay', u'name_barangay']]
+
+
+        for col in [u'Pcode_province', u'Pcode_municipality', u'Pcode_barangay']:
+                df_template[col] = df_template[col].apply(lambda x : preappend_string + str(x).strip())
+
 
         df_template.to_csv('pcode_template_philippines.csv',encoding='utf-8')
 
@@ -187,14 +289,48 @@ df_template = df_template.drop_duplicates()
 
 
 #########################################################################
-option =2
+
+#select one of the options below or create a new one
+option =3
+
+
+if option == 3 :
+        # INPUT
+        #specify the file you want to pcode
+        filename = 'Typhoon Yolanda - Casualties.xlsx'
+
+        known_matches = {}
+        #specify the output file name
+        sav_name = 'Typhoon Yolanda - Casualties_pcoded.csv'
+        sheet_excel_name = 'Summary'
+        #specify which columns correspont to what
+        dict_raw = {'Province': 'L1_name', 
+                    'Municipality': 'L2_name'}
+
+        #specify the levels in the file
+        level_tag = ['L1', 'L2' ]
+
+        #different confidence level for different admin levels
+        #threshold of 0.0 means there is no user imput but less safe results
+        #threshold of 1.0 means that the code will always ask user input
+        #this threshold should be higher for higher admin levels
+        ask_below_score =  {'L1':0.9, 'L2':0.7}
+        reject_below_score= ask_below_score #{'L1':0.55, 'L2':0.55, 'L3':0.55}
+        #if True it removes indications of city, capital and (names in parethesis)
+        name_tricks = True
+        
+
+
+
+
 
 #preset input options for philippines
 if option == 0 :
         # INPUT
         #specify the file you want to pcode
         filename = 'barangay.csv'
-        
+
+        known_matches = {}
         #specify the output file name
         sav_name = 'barangay_pcoded_080716.csv'
         #specify which columns correspont do what
@@ -210,7 +346,7 @@ if option == 0 :
         #threshold of 1.0 means that the code will always ask user input
         #this threshold should be higher for higher admin levels
         ask_below_score =  {'L1':0.9, 'L2':0.7, 'L3':0.7}
-        reject_below_score=  {'L1':0.55, 'L2':0.55, 'L3':0.55}
+        reject_below_score= ask_below_score #{'L1':0.55, 'L2':0.55, 'L3':0.55}
         #if True it removes indications of city, capital and (names in parethesis)
         name_tricks = True
 
@@ -227,7 +363,7 @@ if option == 1 :
         dict_raw = {'municipality':'L2_name' , 
                     'province'  : 'L1_name'}
 
-
+        known_matches = {}
         #specify the levels in the file
         level_tag = ['L1', 'L2' ]
         #different confidence level for different admin levels
@@ -247,7 +383,7 @@ if option == 2 :
         dict_raw = {'municipality':'L2_name' , 
                     'province'  : 'L1_name'}
 
-
+        known_matches = {}
         #specify the levels in the file
         level_tag = ['L1', 'L2' ]
         #different confidence level for different admin levels
@@ -259,7 +395,7 @@ if option == 2 :
 if filename.split(".")[-1] == 'csv' :
         df_raw = pd.read_csv(filename,encoding='utf-8')
 elif filename.split(".")[-1] == 'xlsx' :
-        df_raw = pd.read_excel(filename,encoding='utf-8')
+        df_raw = pd.read_excel(filename,encoding='utf-8', sheetname=sheet_excel_name)
 
 # make the df_raw uppercase for merging pourposes 
 # see the end of the code
@@ -282,89 +418,34 @@ df_template = df_template.drop_duplicates()
 for admin_level in level_tag: 
         df_template[admin_level+'_name']=df_template[admin_level+'_name'].str.upper()
         df[admin_level+'_name']=df[admin_level+'_name'].str.upper()
-        df[admin_level+'_code'] = np.NaN 
+        #df[admin_level+'_code'] = np.NaN 
         df[admin_level+'_best_match_name'] = np.NaN 
 
+level_tag_name = [ ] 
+for tag in level_tag : level_tag_name.append(tag+'_name') 
+
+
+#### a simple join is tried first for exact matches
+
+df = pd.merge(df , df_template , on = level_tag_name   , how = 'left')
+
+### 
+
+df = match_against_template(df , df_template, level_tag,ask_below_score, reject_below_score, reverse = False)
+df = match_against_template(df , df_template, level_tag,ask_below_score, reject_below_score, reverse = True)
 
 
 
-exception = 'TOTAL'
+# saving the known matches so they can be loaded and modified
+# later version the known matches file can be specified in the options
+# warm_start
 
-verbose = True
-verbose = False
-n_perfect_matches =0 
-n_no_matches =0 
-counter = 0 
-known_matches = {}
-for index in df.index : 
-#for index in df.index[0:10] : 
-#for index in [2251] : 
-
-        df_template_matches = df_template
-        upper_level = ''
-        for admin_level in level_tag:
-
-                if verbose : 
-                        print 'len template dataframe level', admin_level\
-                                , len(df_template_matches)
-                        print df_template_matches.describe()
-                        
-                #gets the name of the admin level for the index entry
-                name_admin_level = df.loc[index][admin_level+'_name']
-                if name_admin_level  == exception : continue
-                #it tries to get a perfect match straight away
-                n_matches_current_level = sum(df_template_matches[admin_level+'_name']==
-                                              name_admin_level)
-                if verbose : print 'num matches', admin_level ,  n_matches_current_level
-                
-                if (n_matches_current_level) > 0 :
-                        if verbose : print ''
-                             
-                elif (n_matches_current_level) == 0 :
-                        print "perc completed " , ((float(counter)/len(df.index))*100),'\n'
-                        poss_matches = (df_template_matches[admin_level+'_name'].drop_duplicates()).values
-                        score_threshold=ask_below_score[admin_level]     
-                        reject_threshold=reject_below_score[admin_level]       
-                        
-                        best_match  = find_best_match_user_input( poss_matches , name_admin_level,  upper_level , score_threshold, reject_threshold, known_matches ,  use_tricks = name_tricks) 
-                        if best_match == 'Not found' :  
-                               n_no_matches +=1 
-                               print '************* Not found'
-                               print df.loc[index]
-                               break 
-                        elif best_match == 'error' :         
-                               n_no_matches +=1 
-                               print '************* error admin ' , admin_level , name_admin_level
-                               print df.loc[index]
-
-                               break
-                        #print 'admin ' , admin_level , name_admin_level ,  'bestmatch ' , best_match , score_m , 'edit dist' , edit_distance(best_match , name_admin_level), '\n'
-                        name_admin_level = best_match
-                        n_matches_current_level = sum(df_template_matches[admin_level+'_name']==
-                                              name_admin_level)
-                        
-                df_template_matches = df_template_matches.loc[
-                        df_template_matches[admin_level+'_name']==name_admin_level]
-                
-                if (n_matches_current_level) == 0 & (admin_level== level_tag[-1]):
-                        n_no_matches +=1 
-                if n_matches_current_level == 1 :
-                        
-                        n_perfect_matches +=1
-                        if verbose : print df_template_matches
-                        for admin_level_tag in level_tag: 
-                                df.loc[index,admin_level_tag+'_code']=df_template_matches[admin_level_tag+'_code'].values
-                                df.loc[index,admin_level_tag+'_best_match_name']=df_template_matches[admin_level_tag+'_name'].values
-                upper_level += admin_level + df.loc[index][admin_level+'_name']
-                #add dictionary with known matches
-        counter+=1
-
-print 'perfect match found  ' , n_perfect_matches
-print 'no match found  ' , n_no_matches
-
-
-
-
+df_known_matches = pd.DataFrame.from_dict(known_matches, orient='index')
+#df_known_matches.reset_index()
+#df_known_matches.columns = [ 'name_raw' , 'name_match' ] 
+name_km_sav = 'known_matches_' + sav_name
+df_known_matches.to_csv(name_km_sav,encoding='utf-8' )
+df_dummy = pd.read_csv(name_km_sav,encoding='utf-8')
 
 
 df_pcoded = pd.merge(df_raw, df, 
@@ -372,5 +453,9 @@ df_pcoded = pd.merge(df_raw, df,
                      right_on=dict_raw.values(), 
                      how = 'inner')
 df_pcoded.to_csv(sav_name,encoding='utf-8' )
+
+print ' list of no matches' , sum(df[level_tag[-1]+'_code'].isnull())
+print ' list of matches ' , sum(df[level_tag[-1]+'_code'].notnull())
+
 
 
