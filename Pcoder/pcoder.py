@@ -8,7 +8,7 @@
 # to be provided as a list
 # add extra word metric as an option
 # add support for multiple words (different lenguages?)
-# write a unit test
+
 
 def construct_known_match_tag(name , upper_level):
         """ Function that creates a tag with the name and the previus level
@@ -198,90 +198,139 @@ import difflib
 import re
 
 
+region = 'philippines'
+
+
+
+#it can produce the template from a file with all pcodes
+# and different admin levels
+produce_template=False
+
+if region == 'malawi' : 
 
 
 
 
+        #########################################################################
+        #this part can be skipped if a template has already been produced
+        if produce_template :
 
-produce_template =False
-#add a string in front of the pcode
-preappend_string = 'PH'
-
-#########################################################################
-#this part can be skipped if a template has already been produced
-if produce_template :
-
-        #building template file for the philippines
-        #this part is philippines specific
-        # a template should have a name and pcode for every admin level
-
-        # read the Pcodes from template files
-        # for provinces , municipalities and barangays
-        df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
-                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str})
-
-        df_pcodes_pro.columns = ['Pcode_province',
-                                 'name_province']
-
-        df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
-                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
-        df_pcodes_mun.columns = ['Pcode_province',
-                                 'name_province', 
-                                 'Pcode_municipality',
-                                 'name_municipality']
-
-
-        df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
-                                      skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
-        df_pcodes_bar.columns = ['Pcode_municipality',
-                                 'name_municipality', 
-                                 'Pcode_barangay',
-                                 'name_barangay']
-
-        #build a template file with the 3 admin levels
-
-        # create a template dataframe
-        #first create a template for L1 L2 L3 admin level names and codes
-        df_template =  pd.merge(df_pcodes_mun, df_pcodes_bar, 
-                                 left_on ='Pcode_municipality', 
-                                 right_on='Pcode_municipality', 
-                                 how = 'inner')
-
-        df_template = df_template[[u'Pcode_province', u'name_province', u'Pcode_municipality',
-               u'name_municipality_x',  u'Pcode_barangay', u'name_barangay']]
-
-
-        for col in [u'Pcode_province', u'Pcode_municipality', u'Pcode_barangay']:
-                df_template[col] = df_template[col].apply(lambda x : preappend_string + str(x).strip())
-
-
-        df_template.to_csv('pcode_template_philippines.csv',encoding='utf-8')
-
-##########################################################################
-
-
-#INPUT
-# Read the template csv file and assign admin levels to columns
-filename_template = 'pcode_template_philippines.csv'
-
-#INPUT
-#fill in the assignation of columns
-#match columns names with admin levels
-dict_raw_template  = {'Pcode_province':     'L1_code',
-                      'name_province':      'L1_name', 
-                      'Pcode_municipality': 'L2_code',
-                      'name_municipality_x':'L2_name',
-                      'Pcode_barangay':     'L3_code',
-                      'name_barangay':      'L3_name'}
+                df_pcodes = pd.read_csv('malawi_template.csv',encoding='utf-8',index_col=0)
 
 
 
-df_raw_template = pd.read_csv(filename_template)
 
-df_template = df_raw_template[dict_raw_template.keys()]
-df_template.columns = [dict_raw_template.values()]
-df_template = df_template.drop_duplicates()
-#########################################################################
+                
+                dict_template  = {'P_CODE_REGION':     'L1_code',
+                                  'REGION':            'L1_name', 
+                                  'P_CODE_DISTRICT':   'L2_code',
+                                  'DISTRICT':          'L2_name',
+                                  'P_CODE_TA':         'L3_code',
+                                  'TRAD_AUTH':         'L3_name'}
+                
+                df_template = df_pcodes[dict_template.keys()]
+                df_template.columns = [dict_template.values()]
+                df_template = df_template.drop_duplicates()
+        
+
+                df_template.to_csv('pcode_template_malawi.csv',encoding='utf-8')
+
+        ##########################################################################
+        ##########################################################################
+
+
+        #INPUT
+        # Read the template csv file and assign admin levels to columns
+        filename_template = 'pcode_template_malawi.csv'
+
+        df_template = pd.read_csv(filename_template)
+
+        
+        #########################################################################
+
+
+if region == 'philippines' :        
+
+        produce_template =False
+        # template for the philippines
+        #add a string in front of the pcode
+        preappend_string = 'PH'
+
+        #########################################################################
+        #this part can be skipped if a template has already been produced
+        if produce_template :
+
+                #building template file for the philippines
+                #this part is philippines specific
+                # a template should have a name and pcode for every admin level
+
+                # read the Pcodes from template files
+                # for provinces , municipalities and barangays
+                df_pcodes_pro = pd.read_excel('template.xlsx',sheetname='Province', 
+                                              skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str})
+
+                df_pcodes_pro.columns = ['Pcode_province',
+                                         'name_province']
+
+                df_pcodes_mun = pd.read_excel('template.xlsx',sheetname='Municipality', 
+                                              skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
+                df_pcodes_mun.columns = ['Pcode_province',
+                                         'name_province', 
+                                         'Pcode_municipality',
+                                         'name_municipality']
+
+
+                df_pcodes_bar = pd.read_excel('template.xlsx',sheetname='Barangay', 
+                                              skiprows = 1 , skip_footer = 1,header=None,encoding='utf-8',converters={0:str,2:str})
+                df_pcodes_bar.columns = ['Pcode_municipality',
+                                         'name_municipality', 
+                                         'Pcode_barangay',
+                                         'name_barangay']
+
+                #build a template file with the 3 admin levels
+
+                # create a template dataframe
+                #first create a template for L1 L2 L3 admin level names and codes
+                df_template =  pd.merge(df_pcodes_mun, df_pcodes_bar, 
+                                         left_on ='Pcode_municipality', 
+                                         right_on='Pcode_municipality', 
+                                         how = 'inner')
+
+                df_template = df_template[[u'Pcode_province', u'name_province', u'Pcode_municipality',
+                       u'name_municipality_x',  u'Pcode_barangay', u'name_barangay']]
+
+
+                for col in [u'Pcode_province', u'Pcode_municipality', u'Pcode_barangay']:
+                        df_template[col] = df_template[col].apply(lambda x : preappend_string + str(x).strip())
+
+
+                df_template.to_csv('pcode_template_philippines.csv',encoding='utf-8')
+
+        ##########################################################################
+
+
+        #INPUT
+        # Read the template csv file and assign admin levels to columns
+        filename_template = 'pcode_template_philippines.csv'
+
+        #INPUT
+        #fill in the assignation of columns
+        #match columns names with admin levels
+        dict_raw_template  = {'Pcode_province':     'L1_code',
+                              'name_province':      'L1_name', 
+                              'Pcode_municipality': 'L2_code',
+                              'name_municipality_x':'L2_name',
+                              'Pcode_barangay':     'L3_code',
+                              'name_barangay':      'L3_name'}
+
+
+
+        df_raw_template = pd.read_csv(filename_template)
+
+        df_template = df_raw_template[dict_raw_template.keys()]
+        df_template.columns = [dict_raw_template.values()]
+        df_template = df_template.drop_duplicates()
+        #########################################################################
 
 
 
@@ -291,7 +340,80 @@ df_template = df_template.drop_duplicates()
 #########################################################################
 
 #select one of the options below or create a new one
-option =3
+option =4
+
+
+#option template (substitute with desired values)
+if option == 'template' :
+        # INPUT
+        #specify the file you want to pcode
+        #it can be a csv or a .xlsx file
+        filename = './haima/filename.xlsx'
+
+        #inizialize the list of known matches
+        # in the future it could be loaded
+        known_matches = {}
+        #specify the output file name
+        # this is a csv file
+        sav_name = './haima/filename_pcoded.csv'
+
+        # if excel file it is possible to specify the sheet name
+        # put 0 if only one sheet, otherwise specify sheet name
+        sheet_excel_name = 0
+        #specify which columns correspont to what
+        dict_raw = {'Province': 'L1_name', 
+                    'Municipality': 'L2_name'}
+
+        #specify the levels in the file
+        level_tag = ['L1', 'L2' ]
+
+
+        # ------ thresholds for word linkage ----
+        # 0.8 is usually safe
+        #different confidence level for different admin levels
+        #threshold of 0.0 means there is no user imput (but less safe results)
+        #threshold of 1.0 means that the code will always ask user input
+        #this threshold should be higher for higher admin levels
+        ask_below_score =  {'L1':0.9, 'L2':0.8}
+        # if the score is below the reject level it is considered not found 
+        reject_below_score= {'L1':0.55, 'L2':0.55, 'L3':0.55}
+
+        #if True it removes indications of city, capital and (names in parethesis)
+        # this is tailored to the philippines right now and english
+        # in the future it can be determined automatically
+        name_tricks = True
+
+
+
+
+
+if option == 4 :
+        # INPUT
+        #specify the file you want to pcode
+        filename = './haima/haima_houses_damaged.xlsx'
+
+        known_matches = {}
+        #specify the output file name
+        sav_name = './haima/haima_houses_damaged_pcoded.csv'
+
+        #0 if only one sheet, otherwise specify sheet name
+        sheet_excel_name = 0
+        #specify which columns correspont to what
+        dict_raw = {'Province': 'L1_name', 
+                    'Municipality': 'L2_name'}
+
+        #specify the levels in the file
+        level_tag = ['L1', 'L2' ]
+
+        #different confidence level for different admin levels
+        #threshold of 0.0 means there is no user imput but less safe results
+        #threshold of 1.0 means that the code will always ask user input
+        #this threshold should be higher for higher admin levels
+        ask_below_score =  {'L1':0.9, 'L2':0.8}
+        reject_below_score= {'L1':0.55, 'L2':0.55, 'L3':0.55}
+        #if True it removes indications of city, capital and (names in parethesis)
+        name_tricks = True
+
 
 
 if option == 3 :
@@ -392,6 +514,9 @@ if option == 2 :
         #if True it removes indications of city, capital and (names in parethesis)
         name_tricks = True
 
+
+        
+#read the file to pcode
 if filename.split(".")[-1] == 'csv' :
         df_raw = pd.read_csv(filename,encoding='utf-8')
 elif filename.split(".")[-1] == 'xlsx' :
@@ -401,6 +526,7 @@ elif filename.split(".")[-1] == 'xlsx' :
 # see the end of the code
 for i in range(len(dict_raw)) : df_raw[dict_raw.keys()[i]]=df_raw[dict_raw.keys()[i]].str.upper()
 
+#rename columns
 df = df_raw[dict_raw.keys()]
 df.columns = [dict_raw.values()]
 df = df.drop_duplicates()
@@ -430,7 +556,7 @@ for tag in level_tag : level_tag_name.append(tag+'_name')
 df = pd.merge(df , df_template , on = level_tag_name   , how = 'left')
 
 ### 
-
+#forward and backward pass
 df = match_against_template(df , df_template, level_tag,ask_below_score, reject_below_score, reverse = False)
 df = match_against_template(df , df_template, level_tag,ask_below_score, reject_below_score, reverse = True)
 
@@ -448,6 +574,7 @@ df_known_matches.to_csv(name_km_sav,encoding='utf-8' )
 df_dummy = pd.read_csv(name_km_sav,encoding='utf-8')
 
 
+#merge it back to the original file
 df_pcoded = pd.merge(df_raw, df, 
                      left_on =dict_raw.keys(), 
                      right_on=dict_raw.values(), 
